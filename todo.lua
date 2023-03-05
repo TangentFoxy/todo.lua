@@ -2,17 +2,6 @@
 
 math.randomseed(os.time())
 
--- NOTE not in use anymore
-local function print_stuff(object)
-  if type(object) == "table" then
-    for index, value in ipairs(object) do
-      print(index, value)
-    end
-  else
-    print(object)
-  end
-end
-
 local function add_list_printing(list)
   local function leftpad(str, width)
     if not width then width = 4 end
@@ -28,9 +17,10 @@ local function add_list_printing(list)
   setmetatable(list, {
     __tostring = function(t)
       local output = {}
-      for index, value in ipairs(t) do
+      for index, value in pairs(t) do
         table.insert(output, pad(leftpad(index, 4), 8) .. tostring(value))
       end
+      table.sort(output)
       return table.concat(output, "\n")
     end,
   })
@@ -80,14 +70,14 @@ local function get_tags(object, tag_type)
     end
 
     if tag_type == tag_symbols.custom then
-      for _, token in ipairs(tokens) do
+      for _, token in pairs(tokens) do
         local index = token:find(tag_type)
         if index then
           table.insert(tags, token:sub(1, index))
         end
       end
     else
-      for _, token in ipairs(tokens) do
+      for _, token in pairs(tokens) do
         if token:find(tag_type) == 1 then
           table.insert(tags, token)
         end
@@ -97,6 +87,8 @@ local function get_tags(object, tag_type)
     return tags
   end
 
+  -- BUG this function destroys how I want lists to work
+  --  list numbering must be preserved elsewhere, this is very hacky
   local function append(recipient_list, source_list)
     if not (type(recipient_list) == "table" and type(source_list) == "table") then
       error("append() only accepts tables.")
@@ -121,7 +113,7 @@ local function get_tags(object, tag_type)
     end
     if not tag_type then
       for _, tag in pairs(tag_symbols) do
-        tags = append(tags, parse(tokens, tag)) -- I hate this
+        tags = append(tags, parse(tokens, tag)) -- I hate this (because it is hacky)
       end
     end
   end
@@ -139,6 +131,8 @@ local function load()
   return items
 end
 
+-- can't handle sparse lists, but preserving order is more important right now,
+--  and it should never receive a sparse list anyhow
 local function save(list)
   -- TODO make able to save to different locations or not backup every time
   if not list then
@@ -157,11 +151,10 @@ local function save(list)
   file:close()
 end
 
+-- can't handle sparse lists, but preserving order is more important right now,
+--  and it should never receive a sparse list anyhow
 local function add_item(list, text)
-  -- TEMP this doesn't handle priorities correctly!
-  -- TODO split into tokens, check and discard priority,
-  --  check and discard completion?,
-  --  check and implement..however
+  -- TEMP this doesn't handle priorities correctly! priorities come before dates
   if not (text:find("%d%d%d%d%-%d%d%-%d%d") == 1) then
     text = os.date("%Y-%m-%d") .. " " .. text
   end
@@ -179,6 +172,16 @@ local function documented_function(doc, fn)
   return t
 end
 
+local function filter(list, criteria)
+  local filtered_list = new_list()
+  for index, item in pairs(items) do
+    if criteria(item) then
+      filtered_list[index] = item
+    end
+  end
+  return filtered_list
+end
+
 local commands = {
   add = documented_function("Adds a new item.", function(arguments)
     if not arguments then error("Tried to add an empty item?") end
@@ -187,12 +190,14 @@ local commands = {
     print(#items, items[#items])
   end),
   list = documented_function("Lists items with filtering. Shows only incomplete items by default.", function(arguments)
-    -- TODO allow filtering (default should be incomplete items only)
-    --  this requires a lot of parsing, can't use the tostring() method
-    --  remember to filter AFTER numbering, so that numbering is preserved
-    print(items)
+    -- TODO allow filtering
+    local function is_complete(item)
+      return not (item:sub(1, 2) == "x ")
+    end
+    local complete_items = filter(items, is_complete)
+    print(complete_items)
   end),
-  help = documented_function("", function(arguments)
+  help = documented_function("Shows all available commands.", function(arguments)
     -- TODO allow filtering / more in-depth documentation
     local documentation = new_list()
     for name, fn in pairs(commands) do
