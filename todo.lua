@@ -2,6 +2,10 @@
 
 math.randomseed(os.time())
 
+local patterns = {
+  date = "%d%d%d%d%-%d%d%-%d%d",
+}
+
 local function add_list_printing(list)
   local function leftpad(str, width)
     if not width then width = 4 end
@@ -51,7 +55,6 @@ local function tokenize(text)
 end
 
 local function get_tags(object, tag_type)
-  local tags
   if not object then
     error("get_tags() requires an argument.")
   end
@@ -100,6 +103,7 @@ local function get_tags(object, tag_type)
     return recipient_list
   end
 
+  local tags
   if type(object) == "table" then
     -- TODO recognize this as an options table
     --  options: items (list of items), tokens, item (single string)
@@ -151,11 +155,76 @@ local function save(list)
   file:close()
 end
 
+local function parse_item(text)
+  local item = {
+    complete = false,
+    priority = 27,
+    completion_date = false,
+    creation_date = false,
+    description = text,
+    tags = new_list(),
+    original_text = text,
+  }
+  setmetatable(item, {
+    __tostring = function(t)
+      -- return t.original_text
+      local text = ""
+      if t.complete then
+        text = "x "
+      end
+      if t.priority < 27 then
+        local priorities = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        text = text .. "(" .. text:sub(t.priority, t.priority) .. ") "
+      end
+      if t.completion_date then
+        text = text .. t.completion_date .. " "
+      end
+      if t.creation_date then
+        text = text .. t.creation_date .. " "
+      end
+      text = text .. description
+      return text
+    end,
+  })
+
+  if text:sub(1, 2) == "x " then
+    item.complete = true
+    text = text:sub(3)
+  end
+  if text:find("%(%u%) ") == 1 then
+    local priorities = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    local priority = priorities:find(text:sub(2, 2))
+    if priority then
+      item.priority = priority
+    end
+    text = text:sub(5)
+  end
+  if text:find(patterns.date) == 1 then
+    -- this is one of two dates potentially
+    local date = text:sub(1, 10)
+    text = text:sub(12)
+    if text:find(patterns.date) == 1 then
+      -- if two dates are specified, the first is completion_date, the second is creation_date
+      item.completion_date = date
+      item.creation_date = text:sub(1, 10)
+      text = text:sub(12)
+    else
+      -- if only one date is specified, it is the creation_date
+      item.creation_date = date
+    end
+  end
+  item.tags = get_tags(text)
+  item.description = text
+
+  return item
+end
+
 -- can't handle sparse lists, but preserving order is more important right now,
 --  and it should never receive a sparse list anyhow
 local function add_item(list, text)
   -- TEMP this doesn't handle priorities correctly! priorities come before dates
-  if not (text:find("%d%d%d%d%-%d%d%-%d%d") == 1) then
+  -- TODO use parse_item to check for a date, add it if needed, and re-assemble into raw text
+  if not (text:find(patterns.date) == 1) then
     text = os.date("%Y-%m-%d") .. " " .. text
   end
   table.insert(list, text)
