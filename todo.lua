@@ -222,8 +222,13 @@ end
 -- can't handle sparse lists, but preserving order is more important right now,
 --  and it should never receive a sparse list anyhow
 local function add_item(list, text)
+  -- local item = parse_item(text) -- BUG somehow doesn't work
+  -- if not item.creation_date then
+  --   item.creation_date = os.date("%Y-%m-%d")
+  -- end
+  -- table.insert(list, tostring(item))
+
   -- TEMP this doesn't handle priorities correctly! priorities come before dates
-  -- TODO use parse_item to check for a date, add it if needed, and re-assemble into raw text
   if not (text:find(patterns.date) == 1) then
     text = os.date("%Y-%m-%d") .. " " .. text
   end
