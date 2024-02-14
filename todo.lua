@@ -4,6 +4,7 @@ math.randomseed(os.time())
 
 local patterns = {
   date = "%d%d%d%d%-%d%d%-%d%d",
+  priority = "%u",
 }
 
 local function add_list_printing(list)
@@ -191,6 +192,9 @@ local function parse_item(text)
     item.complete = true
     text = text:sub(3)
   end
+  -- NOTE I am not sure what this is doing exactly. This might be what is breaking parse_item.
+  --  This pattern is using a capture but expecting an integer result. That probably shouldn't be possible.
+  --  Also, this pattern.. should be capturing what is needed, why do we manually grab it after catching it?
   if text:find("%(%u%) ") == 1 then
     local priorities = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     local priority = priorities:find(text:sub(2, 2))
