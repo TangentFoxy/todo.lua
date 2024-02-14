@@ -136,8 +136,6 @@ local function load()
   return items
 end
 
--- can't handle sparse lists, but preserving order is more important right now,
---  and it should never receive a sparse list anyhow
 local function save(list)
   -- TODO make able to save to different locations or not backup every time
   if not list then
@@ -150,8 +148,14 @@ local function save(list)
   local file, err = io.open("todo.txt", "w")
   if err then error(err) end
 
-  for _, item in ipairs(list) do
-    file:write(item .. "\n")
+  local ordered_list = {}
+  for index, item, in pairs(list) do
+    table.insert(ordered_list, {index = index, item = item})
+  end
+  table.sort(ordered_list, function(a, b) return a.index < b.index end)
+
+  for _, item in ipairs(ordered_list) do
+    file:write(item.item .. "\n")
   end
   file:close()
 end
