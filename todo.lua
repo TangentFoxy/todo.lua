@@ -227,8 +227,6 @@ local function parse_item(text)
   return item
 end
 
--- can't handle sparse lists, but preserving order is more important right now,
---  and it should never receive a sparse list anyhow
 local function add_item(list, text)
   -- local item = parse_item(text) -- BUG somehow doesn't work
   -- if not item.creation_date then
@@ -240,7 +238,13 @@ local function add_item(list, text)
   if not (text:find(patterns.date) == 1) then
     text = os.date("%Y-%m-%d") .. " " .. text
   end
-  table.insert(list, text)
+
+  local last_index = 0
+  for index, item in pairs(list) do
+    if index > last_index then last_index = index end
+  end
+  
+  list[last_index + 1] = text
 end
 
 local items = load()
