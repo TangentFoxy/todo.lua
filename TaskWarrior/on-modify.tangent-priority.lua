@@ -25,19 +25,19 @@ local function iso8601_to_seconds(iso8601_timestamp)
   return timestamp
 end
 
-if arg[1] == "api:2" then
-  local task = cjson.decode(io.read())
-
-  -- based on Reddit's hot sorting method
-  local time = iso8601_to_seconds(task.modified) - 1134028003
-  -- 1 to 27 (no priority to priority A)
-  local score = 1
-  if task.priority then
-    score = 1 + ("ZYXWVUTSRQPONMLKJIHGFEDCBA"):find(task.priority)
-  end
-  task.tanpri = math.log(score) + time / 86400 -- decay period of 1 day
-
-  print(cjson.encode(task))
-else
+if arg[1] != "api:2" then
   io.stderr:write(get_file_name(arg[0]) .. " was written for TaskWarrior Hooks v2.\n")
 end
+
+local task = cjson.decode(io.read())
+
+-- based on Reddit's hot sorting method
+local time = iso8601_to_seconds(task.modified) - 1134028003
+-- 1 to 27 (no priority to priority A)
+local score = 1
+if task.priority then
+  score = 1 + ("ZYXWVUTSRQPONMLKJIHGFEDCBA"):find(task.priority)
+end
+task.tanpri = math.log(score) + time / 86400 -- decay period of 1 day
+
+print(cjson.encode(task))
