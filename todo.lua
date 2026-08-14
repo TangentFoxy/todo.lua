@@ -41,7 +41,7 @@ end
 
 local function tokenize(text)
   local tokens = new_list()
-  if not type(text) == "string" then
+  if not (type(text) == "string") then
     error("tokenize() only accepts strings.")
   end
 
